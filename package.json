@@ -1,0 +1,23 @@
+{
+  "name": "crawlerproj",
+  "version": "1.0.0",
+  "description": "",
+  "main": "main.js",
+  "scripts": {
+    "start": "node main.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Nimiauredhel/crawlerproj.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Nimiauredhel/crawlerproj/issues"
+  },
+  "homepage": "https://github.com/Nimiauredhel/crawlerproj#readme",
+  "devDependencies": {
+    "jest": "^29.7.0"
+  }
+}
