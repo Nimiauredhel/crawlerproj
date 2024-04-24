@@ -19,7 +19,7 @@ function getUrlsFromHtml(htmlBody, baseUrl) {
             const urlObj = new URL(urlString)
             urls.push(urlString)
         } catch (err) {
-            console.log('error with url: ${err.message}')
+            console.log(`error with url: ${err.message}`)
         }
     }
     return urls
