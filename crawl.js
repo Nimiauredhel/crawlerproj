@@ -1,26 +1,52 @@
 const { JSDOM } = require('jsdom')
 
-async function crawlPage(currentUrl) {
+async function crawlPage(baseUrl, currentUrl, pages) {
+    const baseUrlObj = new URL(baseUrl)
+    const currentUrlObj = new URL(currentUrl)
+
+    if (baseUrlObj.hostname !== currentUrlObj.hostname) {
+        return pages;
+    }
+
+    const normalizedUrl = normalizeUrl(currentUrl)
+
+    if (pages[normalizedUrl] > 0) {
+        pages[normalizedUrl]++
+        return pages;
+    }
+
     console.log(`crawling: ${currentUrl} ...`)
+    pages[normalizedUrl] = 1
+
     try {
         const response = await fetch(currentUrl)
 
         if (response.status > 399) {
             console.log(`error in fetch with status code: ${response.status} on page ${currentUrl}`)
-            return;
+            return pages
         }
+
         const contentType = response.headers.get("content-type")
+
         if (contentType.includes("text/html")) {
-            console.log(await response.text())
+
+            const htmlBody = await response.text();
+            const nextUrls = getUrlsFromHtml(htmlBody, baseUrl)
+
+            for (const nextUrl of nextUrls) {
+                pages = await crawlPage(baseUrl, nextUrl, pages)
+            }
         } else {
             console.log(`non html response, content type: ${contentType} on page: ${currentUrl}`)
         }
     } catch (err) {
         console.log(`error in fetch: ${err.message} on page ${currentUrl}`)
     }
+
+    return pages;
 }
 
-function getUrlsFromHtml(htmlBody, baseUrl){
+function getUrlsFromHtml(htmlBody, baseUrl) {
     const urls = []
     const dom = new JSDOM(htmlBody)
     const linkElements = dom.window.document.querySelectorAll('a')
@@ -36,7 +62,7 @@ function getUrlsFromHtml(htmlBody, baseUrl){
             urlString = linkElement.href
         }
         try {
-            const urlObj = new URL(urlString)$
+            const urlObj = new URL(urlString)
             urls.push(urlString)
         } catch (err) {
             console.log(`error with url: ${err.message}`)
