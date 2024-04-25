@@ -20,7 +20,7 @@ async function crawlPage(currentUrl) {
     }
 }
 
-function getUrlsFromHtml(htmlBody, baseUrl)
+function getUrlsFromHtml(htmlBody, baseUrl){
     const urls = []
     const dom = new JSDOM(htmlBody)
     const linkElements = dom.window.document.querySelectorAll('a')
