@@ -1,7 +1,19 @@
 const { JSDOM } = require('jsdom')
 
-async function crawlPage(baseUrl, currentUrl, pages) {
-    const baseUrlObj = new URL(baseUrl)
+async function initiateCrawl(baseUrl) {
+    const pages = {}
+    try {
+        baseUrl = normalizeUrl(baseUrl)
+        const baseUrlObj = new URL(baseUrl)
+    } catch (err) {
+        console.log(`error with base url: ${err.message}`)
+        return pages 
+    }
+    await crawlPage(baseUrlObj, baseUrl, pages)
+    return pages;
+}
+
+async function crawlPage(baseUrlObj, currentUrl, pages) {
     const currentUrlObj = new URL(currentUrl)
 
     if (baseUrlObj.hostname !== currentUrlObj.hostname) {
@@ -83,6 +95,7 @@ function normalizeUrl(urlString) {
 }
 
 module.exports = {
+    initiateCrawl,
     crawlPage,
     normalizeUrl,
     getUrlsFromHtml

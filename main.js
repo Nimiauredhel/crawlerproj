@@ -1,4 +1,4 @@
-const { crawlPage } = require('./crawl.js')
+const { initiateCrawl } = require('./crawl.js')
 const { formatReport } = require('./report.js')
 
 async function main() {
@@ -13,7 +13,7 @@ async function main() {
     const baseUrl = process.argv[2]
 
     console.log(`starting crawl at: ${baseUrl}`)
-    const pages = await crawlPage(baseUrl, baseUrl, {})
+    const pages = await initiateCrawl(baseUrl)
     const report = formatReport(pages)
     console.log(report)
     process.exit(0)
