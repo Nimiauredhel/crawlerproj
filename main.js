@@ -10,7 +10,7 @@ async function main() {
         process.exit(1)
     }
 
-    const baseUrl = process.argv[2]
+    const baseUrl = validateBaseUrl(process.argv[2])
     let baseUrlObj;
 
     try {
@@ -25,6 +25,14 @@ async function main() {
     const report = formatReport(pages)
     console.log(report)
     process.exit(0)
+}
+
+function validateBaseUrl(baseUrl) {
+    if (baseUrl.slice(0, 4) === 'http') {
+        return baseUrl;
+    } else {
+        return `https://${baseUrl}`
+    }
 }
 
 main()
