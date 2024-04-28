@@ -1,15 +1,18 @@
 const { JSDOM } = require('jsdom')
+const util = require('util')
 
-async function initiateCrawl(baseUrl) {
-    const pages = {}
-    try {
-        baseUrl = normalizeUrl(baseUrl)
-        const baseUrlObj = new URL(baseUrl)
-    } catch (err) {
-        console.log(`error with base url: ${err.message}`)
-        return pages 
+const outLinks = "outLinks"
+const crawlingFormat = "crawling: %s ...\r"
+let crawling = false
+
+
+async function initiateCrawl(baseUrlObj) {
+    if (crawling) {
+        console.log("Attempted initiating crawl twice ??")
+        return {}
     }
-    await crawlPage(baseUrlObj, baseUrl, pages)
+    const pages = await crawlPage(baseUrlObj, baseUrlObj.href, {})
+    process.stdout.clearLine()
     return pages;
 }
 
@@ -17,6 +20,14 @@ async function crawlPage(baseUrlObj, currentUrl, pages) {
     const currentUrlObj = new URL(currentUrl)
 
     if (baseUrlObj.hostname !== currentUrlObj.hostname) {
+        if (!pages[outLinks]) {
+            pages[outLinks] = {}
+        }
+        if (pages[outLinks][currentUrl]) {
+            pages[outLinks][currentUrl]++
+        } else {
+            pages[outLinks][currentUrl] = 1
+        }
         return pages;
     }
 
@@ -27,7 +38,8 @@ async function crawlPage(baseUrlObj, currentUrl, pages) {
         return pages;
     }
 
-    console.log(`crawling: ${currentUrl} ...`)
+    process.stdout.clearLine()
+    process.stdout.write(util.format(crawlingFormat, currentUrl))
     pages[normalizedUrl] = 1
 
     try {
@@ -43,10 +55,10 @@ async function crawlPage(baseUrlObj, currentUrl, pages) {
         if (contentType.includes("text/html")) {
 
             const htmlBody = await response.text();
-            const nextUrls = getUrlsFromHtml(htmlBody, baseUrl)
+            const nextUrls = getUrlsFromHtml(htmlBody, baseUrlObj)
 
             for (const nextUrl of nextUrls) {
-                pages = await crawlPage(baseUrl, nextUrl, pages)
+                pages = await crawlPage(baseUrlObj, nextUrl, pages)
             }
         } else {
             console.log(`non html response, content type: ${contentType} on page: ${currentUrl}`)
@@ -58,7 +70,7 @@ async function crawlPage(baseUrlObj, currentUrl, pages) {
     return pages;
 }
 
-function getUrlsFromHtml(htmlBody, baseUrl) {
+function getUrlsFromHtml(htmlBody, baseUrlObj) {
     const urls = []
     const dom = new JSDOM(htmlBody)
     const linkElements = dom.window.document.querySelectorAll('a')
@@ -68,11 +80,14 @@ function getUrlsFromHtml(htmlBody, baseUrl) {
 
         if (linkElement.href.slice(0, 1) === '/') {
             // relative url
-            urlString = `${baseUrl}${linkElement.href}`
+            urlString = `${baseUrlObj.href}${linkElement.href.slice(1)}`
         } else {
             // absolute url
             urlString = linkElement.href
         }
+
+        if (urlString.length <= 0) continue;
+
         try {
             const urlObj = new URL(urlString)
             urls.push(urlString)

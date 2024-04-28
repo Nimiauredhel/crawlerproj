@@ -11,9 +11,17 @@ async function main() {
     }
 
     const baseUrl = process.argv[2]
+    let baseUrlObj;
+
+    try {
+        baseUrlObj = new URL(baseUrl)
+    } catch (err) {
+        console.log(`error with base url: ${err.message}`)
+        process.exit(0)
+    }
 
     console.log(`starting crawl at: ${baseUrl}`)
-    const pages = await initiateCrawl(baseUrl)
+    const pages = await initiateCrawl(baseUrlObj)
     const report = formatReport(pages)
     console.log(report)
     process.exit(0)
