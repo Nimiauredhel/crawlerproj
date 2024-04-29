@@ -1,5 +1,6 @@
 const { initiateCrawl } = require('./crawl.js')
 const { formatReport } = require('./report.js')
+const { print } = require('./print.js')
 
 async function main() {
     if (process.argv.length < 3) {
@@ -20,7 +21,8 @@ async function main() {
         process.exit(1)
     }
 
-    process.stdout.write(`starting crawl at: ${baseUrl} \r`)
+    print("", true);
+    print(`starting crawl at: ${baseUrl}`, false);
     const pages = await initiateCrawl(baseUrlObj)
     const report = formatReport(pages)
     console.log(report)

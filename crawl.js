@@ -1,16 +1,16 @@
 const { JSDOM } = require('jsdom')
 const util = require('util')
+const { print } = require('./print.js')
 
 const outLinks = "outLinks"
 const crawlingFormat = "crawling: %s ...\r"
+const incrementingFormat = "incrementing link counter: %s ...\r"
 let crawling = false
 let pages = {};
 
-
 async function initiateCrawl(baseUrlObj) {
     if (crawling) {
-        process.stdout.clearLine()
-        process.stdout.write("Attempted initiating crawl twice ??\r")
+        print("Attempted initiating crawl twice ??", false)
         return {}
     }
     crawling = true
@@ -25,8 +25,7 @@ async function initiateCrawl(baseUrlObj) {
             await crawlPage(baseUrlObj, nextUrl)
         }
     } else {
-        process.stdout.clearLine()
-        process.stdout.write("Invalid webpage.\r")
+        print("Invalid webpage.", false)
         process.exit(1)
     }
     process.stdout.clearLine()
@@ -38,45 +37,51 @@ async function crawlPage(baseUrlObj, currentUrl) {
 
     if (baseUrlObj.hostname !== currentUrlObj.hostname) {
         registerLink(currentUrl, true)
-        process.stdout.clearLine()
-        process.stdout.write("registering outside link ${currentUrl} \r")
+        print("registering outside link ${currentUrl}", false)
         return;
     }
 
-    registerLink(currentUrl, false)
+    const seen = registerLink(currentUrl, false)
 
-    process.stdout.clearLine()
-    process.stdout.write(util.format(crawlingFormat, currentUrl))
+    if (seen) {
+        print(util.format(incrementingFormat, currentUrl), false)
+        return;
+    } else {
+        print(util.format(crawlingFormat, currentUrl), false)
+        const htmlBody = await fetchHtmlFromUrl(currentUrl)
 
-    const htmlBody = await fetchHtmlFromUrl(currentUrl)
+        if (htmlBody) {
+            const nextUrls = getUrlsFromHtml(htmlBody, baseUrlObj)
 
-    if (htmlBody) {
-        const nextUrls = getUrlsFromHtml(htmlBody, baseUrlObj)
-
-        for (const nextUrl of nextUrls) {
-            await crawlPage(baseUrlObj, nextUrl)
+            for (const nextUrl of nextUrls) {
+                await crawlPage(baseUrlObj, nextUrl)
+            }
         }
     }
 }
 
 function registerLink(currentUrl, external) {
     const normalizedUrl = normalizeUrl(currentUrl)
+    let seen = false
     if (external) {
         if (!pages[outLinks]) {
             pages[outLinks] = {}
         }
         if (pages[outLinks][currentUrl]) {
             pages[outLinks][currentUrl]++
+            seen = true;
         } else {
             pages[outLinks][currentUrl] = 1
         }
     } else {
         if (pages[normalizedUrl] > 0) {
             pages[normalizedUrl]++
+            seen = true;
         } else {
             pages[normalizedUrl] = 1
         }
     }
+    return seen;
 }
 
 async function fetchHtmlFromUrl(currentUrl) {
@@ -84,8 +89,7 @@ async function fetchHtmlFromUrl(currentUrl) {
         const response = await fetch(currentUrl)
 
         if (response.status > 399) {
-            process.stdout.clearLine()
-            process.stdout.write("error in fetch with status code: ${response.status} on page ${currentUrl}\r")
+            print("error in fetch with status code: ${response.status} on page ${currentUrl}", false)
             return null
         }
 
@@ -94,13 +98,11 @@ async function fetchHtmlFromUrl(currentUrl) {
         if (contentType.includes("text/html")) {
             return await response.text();
         } else {
-            process.stdout.clearLine()
-            process.stdout.write("non html response, content type: ${contentType} on page: ${currentUrl}\r")
+            print("non html response, content type: ${contentType} on page: ${currentUrl}", false)
             return null
         }
     } catch (err) {
-        process.stdout.clearLine()
-        process.stdout.write("error in fetch: ${err.message} on page ${currentUrl}\r")
+        print("error in fetch: ${err.message} on page ${currentUrl}", false)
     }
 }
 
@@ -126,8 +128,7 @@ function getUrlsFromHtml(htmlBody, baseUrlObj) {
             const urlObj = new URL(urlString)
             urls.push(urlString)
         } catch (err) {
-            process.stdout.clearLine()
-            process.stdout.write(`error with url: ${err.message}\r`)
+            print(`error with url: ${err.message}`, false)
         }
     }
     return urls
