@@ -4,22 +4,64 @@ const util = require('util')
 const outLinks = "outLinks"
 const crawlingFormat = "crawling: %s ...\r"
 let crawling = false
+let pages = {};
 
 
 async function initiateCrawl(baseUrlObj) {
     if (crawling) {
-        console.log("Attempted initiating crawl twice ??")
+        process.stdout.clearLine()
+        process.stdout.write("Attempted initiating crawl twice ??\r")
         return {}
     }
-    const pages = await crawlPage(baseUrlObj, baseUrlObj.href, {})
+    crawling = true
+
+    const htmlBody = await fetchHtmlFromUrl(baseUrlObj.href)
+    pages = {};
+
+    if (htmlBody) {
+        const nextUrls = getUrlsFromHtml(htmlBody, baseUrlObj)
+
+        for (const nextUrl of nextUrls) {
+            await crawlPage(baseUrlObj, nextUrl)
+        }
+    } else {
+        process.stdout.clearLine()
+        process.stdout.write("Invalid webpage.\r")
+        process.exit(1)
+    }
     process.stdout.clearLine()
     return pages;
 }
 
-async function crawlPage(baseUrlObj, currentUrl, pages) {
+async function crawlPage(baseUrlObj, currentUrl) {
     const currentUrlObj = new URL(currentUrl)
 
     if (baseUrlObj.hostname !== currentUrlObj.hostname) {
+        registerLink(currentUrl, true)
+        process.stdout.clearLine()
+        process.stdout.write("registering outside link ${currentUrl} \r")
+        return;
+    }
+
+    registerLink(currentUrl, false)
+
+    process.stdout.clearLine()
+    process.stdout.write(util.format(crawlingFormat, currentUrl))
+
+    const htmlBody = await fetchHtmlFromUrl(currentUrl)
+
+    if (htmlBody) {
+        const nextUrls = getUrlsFromHtml(htmlBody, baseUrlObj)
+
+        for (const nextUrl of nextUrls) {
+            await crawlPage(baseUrlObj, nextUrl)
+        }
+    }
+}
+
+function registerLink(currentUrl, external) {
+    const normalizedUrl = normalizeUrl(currentUrl)
+    if (external) {
         if (!pages[outLinks]) {
             pages[outLinks] = {}
         }
@@ -28,46 +70,38 @@ async function crawlPage(baseUrlObj, currentUrl, pages) {
         } else {
             pages[outLinks][currentUrl] = 1
         }
-        return pages;
+    } else {
+        if (pages[normalizedUrl] > 0) {
+            pages[normalizedUrl]++
+        } else {
+            pages[normalizedUrl] = 1
+        }
     }
+}
 
-    const normalizedUrl = normalizeUrl(currentUrl)
-
-    if (pages[normalizedUrl] > 0) {
-        pages[normalizedUrl]++
-        return pages;
-    }
-
-    process.stdout.clearLine()
-    process.stdout.write(util.format(crawlingFormat, currentUrl))
-    pages[normalizedUrl] = 1
-
+async function fetchHtmlFromUrl(currentUrl) {
     try {
         const response = await fetch(currentUrl)
 
         if (response.status > 399) {
-            console.log(`error in fetch with status code: ${response.status} on page ${currentUrl}`)
-            return pages
+            process.stdout.clearLine()
+            process.stdout.write("error in fetch with status code: ${response.status} on page ${currentUrl}\r")
+            return null
         }
 
         const contentType = response.headers.get("content-type")
 
         if (contentType.includes("text/html")) {
-
-            const htmlBody = await response.text();
-            const nextUrls = getUrlsFromHtml(htmlBody, baseUrlObj)
-
-            for (const nextUrl of nextUrls) {
-                pages = await crawlPage(baseUrlObj, nextUrl, pages)
-            }
+            return await response.text();
         } else {
-            console.log(`non html response, content type: ${contentType} on page: ${currentUrl}`)
+            process.stdout.clearLine()
+            process.stdout.write("non html response, content type: ${contentType} on page: ${currentUrl}\r")
+            return null
         }
     } catch (err) {
-        console.log(`error in fetch: ${err.message} on page ${currentUrl}`)
+        process.stdout.clearLine()
+        process.stdout.write("error in fetch: ${err.message} on page ${currentUrl}\r")
     }
-
-    return pages;
 }
 
 function getUrlsFromHtml(htmlBody, baseUrlObj) {
@@ -92,7 +126,8 @@ function getUrlsFromHtml(htmlBody, baseUrlObj) {
             const urlObj = new URL(urlString)
             urls.push(urlString)
         } catch (err) {
-            console.log(`error with url: ${err.message}`)
+            process.stdout.clearLine()
+            process.stdout.write(`error with url: ${err.message}\r`)
         }
     }
     return urls
@@ -114,5 +149,4 @@ module.exports = {
     crawlPage,
     normalizeUrl,
     getUrlsFromHtml
-
 }
