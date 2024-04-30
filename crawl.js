@@ -28,7 +28,7 @@ async function initiateCrawl(baseUrlObj) {
         print("Invalid webpage.", false)
         process.exit(1)
     }
-    process.stdout.clearLine()
+    print("")
     return pages;
 }
 
