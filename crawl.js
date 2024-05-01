@@ -3,8 +3,8 @@ const util = require('util')
 const { print } = require('./print.js')
 
 const outLinks = "outLinks"
-const crawlingFormat = "crawling: %s ...\r"
-const incrementingFormat = "incrementing link counter: %s ...\r"
+const crawlingFormat = "crawling: %s"
+const incrementingFormat = "incrementing link counter: %s"
 let crawling = false
 let pages = {};
 
@@ -22,7 +22,7 @@ async function initiateCrawlSync(baseUrlObj) {
         const nextUrls = getUrlsFromHtml(htmlBody, baseUrlObj)
 
         for (const nextUrl of nextUrls) {
-            await crawlPage(baseUrlObj, nextUrl)
+            await crawlPageSync(baseUrlObj, nextUrl)
         }
     } else {
         print("Invalid webpage.", false)
@@ -32,44 +32,7 @@ async function initiateCrawlSync(baseUrlObj) {
     return pages;
 }
 
-async function initiateCrawlAsync(baseUrlObj) {
-    if (crawling) {
-        print("Attempted initiating crawl twice ??", false)
-        return {}
-    }
-    crawling = true
-
-    const htmlBody = await fetchHtmlFromUrl(baseUrlObj.href)
-    pages = {};
-
-    if (htmlBody) {
-        const nextUrls = getUrlsFromHtml(htmlBody, baseUrlObj)
-
-        while (crawling) {
-            // main website crawling loop
-            const promises = []
-            while (nextUrls.length > 0) {
-                const current = nextUrls.pop()
-                const crawlPromise = new Promise((resolve, reject) => crawlPage(baseUrlObj, current))
-                crawlPromise.then((result) => {
-                    for (link in result) {
-                        nextUrls.push(link)
-                    }
-                })
-                promises.push(crawlPromise)
-            }
-            Promise.allSettled(promises)
-            crawling = nextUrls.length > 0
-        }
-    } else {
-        print("Invalid webpage.", false)
-        process.exit(1)
-    }
-    print("")
-    return pages;
-}
-
-async function crawlPage(baseUrlObj, currentUrl) {
+async function crawlPageSync(baseUrlObj, currentUrl) {
     const currentUrlObj = new URL(currentUrl)
 
     if (baseUrlObj.hostname !== currentUrlObj.hostname) {
@@ -91,8 +54,86 @@ async function crawlPage(baseUrlObj, currentUrl) {
             const nextUrls = getUrlsFromHtml(htmlBody, baseUrlObj)
 
             for (const nextUrl of nextUrls) {
-                await crawlPage(baseUrlObj, nextUrl)
+                await crawlPageSync(baseUrlObj, nextUrl)
             }
+        }
+    }
+}
+
+async function initiateCrawlAsync(baseUrlObj) {
+    if (crawling) {
+        print("Attempted initiating crawl twice ??", false)
+        return {}
+    }
+    crawling = true
+
+    const htmlBody = await fetchHtmlFromUrl(baseUrlObj.href)
+    pages = {};
+
+    if (htmlBody) {
+        const nextUrls = getUrlsFromHtml(htmlBody, baseUrlObj)
+
+        while (crawling) {
+            // main website crawling loop
+            const promises = []
+
+            while (nextUrls.length > 0) {
+                const current = nextUrls.pop()
+                const crawlPromise = new Promise((resolve) =>
+                    resolve(crawlPageAsync(baseUrlObj, current)));
+                promises.push(crawlPromise)
+            }
+
+            await Promise.allSettled(promises).then((results) =>
+                results.forEach((result => {
+                    if (result.value != null) {
+                        const count = result.value.length
+                        let index = 0
+                        for (index = 0; index < count; index++) {
+                            nextUrls.push(result.value[index])
+                        }
+                    }
+                })))
+            crawling = nextUrls.length > 0
+        }
+    } else {
+        print("Invalid webpage.", false)
+        process.exit(1)
+    }
+    print("")
+    return pages;
+}
+
+async function crawlPageAsync(baseUrlObj, currentUrl) {
+    let currentUrlObj
+    try {
+        currentUrlObj = new URL(currentUrl)
+    } catch {
+        print(`invalid link: ${currentUrl}`, false)
+        return null
+    }
+
+    if (baseUrlObj.hostname !== currentUrlObj.hostname) {
+        registerLink(currentUrl, true)
+        print(`registering outside link ${currentUrl}`, false)
+        return null
+    }
+
+    const seen = registerLink(currentUrl, false)
+
+    if (seen) {
+        print(util.format(incrementingFormat, currentUrl), false)
+        return null
+    } else {
+        print(util.format(crawlingFormat, currentUrl), false)
+        const htmlBody = await fetchHtmlFromUrl(currentUrl)
+
+        if (htmlBody) {
+            const nextUrls = getUrlsFromHtml(htmlBody, baseUrlObj)
+            return nextUrls
+        } else {
+            print(`invalid html body ${currentUrl}`, false)
+            return null
         }
     }
 }
@@ -184,8 +225,9 @@ function normalizeUrl(urlString) {
 
 module.exports = {
     initiateCrawlSync,
+    crawlPageSync,
     initiateCrawlAsync,
-    crawlPage,
+    crawlPageAsync,
     normalizeUrl,
     getUrlsFromHtml
 }
