@@ -8,7 +8,7 @@ const incrementingFormat = "incrementing link counter: %s ...\r"
 let crawling = false
 let pages = {};
 
-async function initiateCrawl(baseUrlObj) {
+async function initiateCrawlSync(baseUrlObj) {
     if (crawling) {
         print("Attempted initiating crawl twice ??", false)
         return {}
@@ -23,6 +23,43 @@ async function initiateCrawl(baseUrlObj) {
 
         for (const nextUrl of nextUrls) {
             await crawlPage(baseUrlObj, nextUrl)
+        }
+    } else {
+        print("Invalid webpage.", false)
+        process.exit(1)
+    }
+    print("")
+    return pages;
+}
+
+async function initiateCrawlAsync(baseUrlObj) {
+    if (crawling) {
+        print("Attempted initiating crawl twice ??", false)
+        return {}
+    }
+    crawling = true
+
+    const htmlBody = await fetchHtmlFromUrl(baseUrlObj.href)
+    pages = {};
+
+    if (htmlBody) {
+        const nextUrls = getUrlsFromHtml(htmlBody, baseUrlObj)
+
+        while (crawling) {
+            // main website crawling loop
+            const promises = []
+            while (nextUrls.length > 0) {
+                const current = nextUrls.pop()
+                const crawlPromise = new Promise((resolve, reject) => crawlPage(baseUrlObj, current))
+                crawlPromise.then((result) => {
+                    for (link in result) {
+                        nextUrls.push(link)
+                    }
+                })
+                promises.push(crawlPromise)
+            }
+            Promise.allSettled(promises)
+            crawling = nextUrls.length > 0
         }
     } else {
         print("Invalid webpage.", false)
@@ -146,7 +183,8 @@ function normalizeUrl(urlString) {
 }
 
 module.exports = {
-    initiateCrawl,
+    initiateCrawlSync,
+    initiateCrawlAsync,
     crawlPage,
     normalizeUrl,
     getUrlsFromHtml

@@ -1,13 +1,25 @@
-const { initiateCrawl } = require('./crawl.js')
+const { initiateCrawlSync, initiateCrawlAsync } = require('./crawl.js')
 const { formatReport } = require('./report.js')
 const { print } = require('./print.js')
 
 async function main() {
+    let crawlAsync = true
+
     if (process.argv.length < 3) {
         console.log("insufficient input")
         process.exit(1)
-    } else if (process.argv.length > 3) {
-        console.log("too many inputs")
+    } else if (process.argv.length == 4) {
+        const asyncParam = process.argv[3]
+        if (asyncParam == 'sync') {
+            crawlAsync = false
+        } else if (asyncParam == 'async') {
+            crawlAsync = true
+        } else {
+            console.log("too many inputs")
+            process.exit(1)
+        }
+    } else if (process.argv.length > 4) {
+        console.log("invalid input, did you mean \'sync\' or \'async'\?")
         process.exit(1)
     }
 
@@ -23,7 +35,12 @@ async function main() {
 
     print("", true);
     print(`starting crawl at: ${baseUrl}`, false);
-    const pages = await initiateCrawl(baseUrlObj)
+    let pages
+if (crawlAsync){
+    pages = await initiateCrawlAsync(baseUrlObj)
+} else {
+    pages = await initiateCrawlSync(baseUrlObj)
+}
     const report = formatReport(pages)
     console.log(report)
     process.exit(0)
