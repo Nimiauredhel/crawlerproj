@@ -7,7 +7,7 @@ const outLinks = "outLinks"
 const crawlingFormat = `crawling: %s`
 const incrementingFormat = `incrementing link counter: %s`
 let crawling = false
-let isAsync = false
+let isAsync = true
 let baseUrlObject
 let pages = {};
 
