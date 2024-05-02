@@ -3,16 +3,21 @@ const readline = require('readline')
 let verbose = false
 
 function print(text, newline) {
-    if (newline || verbose) {
+    if (verbose) {
         console.log(text)
     } else {
-        readline.clearLine(process.stdout, 0)
-        readline.cursorTo(process.stdout, 0, null)
-        process.stdout.write(text+'\r')
+        if (newline) {
+            process.stdout.write(text)
+            process.stdout.write('\n')
+        } else {
+            process.stdout.clearLine()
+            process.stdout.write('\r')
+            process.stdout.write(text)
+        }
     }
 }
 
-function setVerbose(value){
+function setVerbose(value) {
     verbose = value;
 }
 
