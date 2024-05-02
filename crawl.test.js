@@ -1,4 +1,4 @@
-const { normalizeUrl, getUrlsFromHtml } = require('./crawl.js')
+const { normalizeUrl, getUrlsFromHtml, setBaseUrl } = require('./crawl.js')
 
 const { test, expect } = require('@jest/globals')
 
@@ -43,8 +43,8 @@ test('getUrlsFromHtml absolute', () => {
         </a>
         </body>
 </html>`
-    const inputBaseUrlObj = new URL("https://blog.boot.dev/")
-    const actual = getUrlsFromHtml(inputHtmlBody, inputBaseUrlObj)
+    setBaseUrl("https://blog.boot.dev/")
+    const actual = getUrlsFromHtml(inputHtmlBody)
     const expected = ["https://blog.boot.dev/path/"]
     expect(actual).toEqual(expected)
 })
@@ -58,8 +58,8 @@ test('getUrlsFromHtml relative', () => {
         </a>
         </body>
 </html>`
-    const inputBaseUrlObj = new URL("https://blog.boot.dev")
-    const actual = getUrlsFromHtml(inputHtmlBody, inputBaseUrlObj)
+    setBaseUrl("https://blog.boot.dev")
+    const actual = getUrlsFromHtml(inputHtmlBody)
     const expected = ["https://blog.boot.dev/path/"]
     expect(actual).toEqual(expected)
 })
@@ -76,8 +76,8 @@ test('getUrlsFromHtml multiple', () => {
         </a>
         </body>
 </html>`
-    const inputBaseUrlObj = new URL("https://blog.boot.dev")
-    const actual = getUrlsFromHtml(inputHtmlBody, inputBaseUrlObj)
+    setBaseUrl("https://blog.boot.dev")
+    const actual = getUrlsFromHtml(inputHtmlBody)
     const expected = ["https://blog.boot.dev/path1/","https://blog.boot.dev/path2/"]
     expect(actual).toEqual(expected)
 })
@@ -91,8 +91,8 @@ test('getUrlsFromHtml invalid', () => {
         </a>
         </body>
 </html>`
-    const inputBaseUrlObj = new URL("https://blog.boot.dev")
-    const actual = getUrlsFromHtml(inputHtmlBody, inputBaseUrlObj)
+    setBaseUrl("https://blog.boot.dev")
+    const actual = getUrlsFromHtml(inputHtmlBody)
     const expected = []
     expect(actual).toEqual(expected)
 })
